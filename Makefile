@@ -9,7 +9,7 @@ all: black ci
 	@echo "ALL GOOD!"
 	@echo ""
 
-ci: blackcheck typecheck pep lint test coverage
+ci: blackcheck typecheck pep lint coverage
 
 black:
 	@$(TIMER) black *.py
