@@ -67,6 +67,6 @@ wheel-push:
 # Initializes the environment - only need to run once
 init:
 	@python3 -m virtualenv .env
-	@python3 -m pip install --upgrade pip setuptools wheel tqdm twine
 	@python3 -m pip install -r requirements.txt
+	@python3 -m pip install --upgrade pip setuptools wheel tqdm twine
 
