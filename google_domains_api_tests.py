@@ -28,7 +28,7 @@ def test_click():
 def test_fqdn():
     """ Tests fqdn
     """
-    test.DOMAIN = "foobar.baz"
+    domain = "foobar.baz"
 
     hostnames = [
         "foo",
@@ -37,5 +37,18 @@ def test_fqdn():
     ]
 
     for hostname in hostnames:
-        assert test.fqdn(hostname) == "foo.foobar.baz."
-        assert test.fqdn(hostname, relative=True) == "foo.foobar.baz"
+        assert test.fqdn(hostname, domain, relative=False) == "foo.foobar.baz."
+        assert test.fqdn(hostname, domain, relative=True) == "foo.foobar.baz"
+        assert test.fqdn(hostname, domain) == "foo.foobar.baz"
+
+
+def test_initialize_from_cmdline():
+    """ Tests initialize_from_cmdline
+    """
+    response = test.initialize_from_cmdline(["-v", "ls"])
+    assert response.get("verbose") is True
+    assert response.get("operation") == "ls"
+
+    response = test.initialize_from_cmdline(["--domain", "foo.bar", "ls"])
+    assert response.get("verbose") is None
+    assert response.get("domain") == "foo.bar"
