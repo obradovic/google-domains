@@ -3,41 +3,72 @@
 """
 import argparse
 from functools import wraps
+import os.path
 import sys
 import time
-from typing import Dict, List, Tuple
-import delegator
+from types import SimpleNamespace
+from typing import Dict, List
 from fqdn import FQDN
+import yaml
 from selenium.common.exceptions import StaleElementReferenceException
 from splinter import Browser
 from splinter.element_list import ElementList
 from splinter.driver.webdriver import WebDriverElement
 
 
-DOMAIN = ""
-GOOGLE_DOMAINS_USERNAME = ""
-GOOGLE_DOMAINS_PASSWORD = ""
-GCLOUD_TARGET = "ghs.googlehosted.com."
-GCLOUD_PROJECT = ""
-GCLOUD_ZONE = ""
-DEBUG = False
+VERBOSE = False  # should we run headless and output lots of messages?
+DOM_MAX_ATTEMPTS = 10  # How many times to retry DOM errors - a reasonably large number, somewhat arbitrary
+ConfigDict = Dict[str, str]  # type alias for mypy
 
 
-def print_timing(func):
-    """ Decorator function, prints out the execution time in ms
+def main():
+    """ Reads the args, and performs the CRUDs
+    """
+    args = initialize()
+    browser = gdomain_api_login(args.domain, args.username, args.password)
+
+    if args.operation == "add":
+        gdomain_api_add(browser, args.domain, args.hostname, args.target)
+    elif args.operation == "del":
+        gdomain_api_del(browser, args.domain, args.hostname)
+    else:
+        gdomain_api_ls(browser, args.domain)
+
+    browser.quit()
+
+
+class Timer:
+    """ Timer block
     """
 
-    @wraps(func)
-    def decorated_function(*args, **kwargs):
-        """ the decorated fx
-        """
+    first_click = None
 
-        # time the method
-        debug(f"   call: {func.__name__}")
-        a = click()
-        ret = func(*args, **kwargs)
-        ms = click() - a
-        debug(f"   time: {func.__name__} took {ms} ms.")
+    def __init__(self, name):
+        self.name = name
+
+    def __enter__(self):
+        self.first_click = click()
+
+    def __exit__(self, the_type, the_value, the_traceback):
+        # if an exception was raised, ignore
+        if the_type:
+            return
+
+        ms = click() - self.first_click
+        debug(f"   time: {self.name} took {ms} ms")
+
+
+def print_timing(function):
+    """ Decorator, prints out the execution time of the function in ms
+    """
+
+    @wraps(function)
+    def decorated_function(*args, **kwargs):
+        """ the decorating fx
+        """
+        debug(f"   call: {function.__name__}")
+        with Timer(function.__name__):
+            ret = function(*args, **kwargs)
 
         return ret
 
@@ -45,130 +76,135 @@ def print_timing(func):
 
 
 @print_timing
-def gdomain_login() -> Browser:
+def gdomain_api_login(domain: str, username: str, password: str) -> Browser:
     """ Logs in, and returns a headless browser at the DNS page
     """
-    browser = Browser("firefox", headless=not DEBUG)
+    browser = Browser("firefox", headless=not VERBOSE)
     browser.visit("https://domains.google.com/registrar/")
 
-    link = browser.links.find_by_partial_text("Sign").first
+    link = browser.links.find_by_partial_text("Sign")
     link.click()
 
-    # Enter username
-    login_name = browser.find_by_id("identifierId").first
-    login_name.fill(GOOGLE_DOMAINS_USERNAME)
-    # browser.type('type', '\n')
+    # Enter username, wait, enter password
+    browser.find_by_id("identifierId").fill(username)
     click_next(browser)
 
-    # Enter password (there MUST be a better way to do this??)
-    wait_for(browser, "Enter your password")
+    wait_for_tag(browser, "div", "Enter your password")
 
-    pwd = browser.find_by_name("password").first
-    pwd.fill(GOOGLE_DOMAINS_PASSWORD)
+    browser.find_by_name("password").fill(password)
     click_next(browser)
 
-    browser.visit(f"https://domains.google.com/registrar/{DOMAIN}/dns")
-    wait_for(browser, "Synthetic records")
+    browser.visit(f"https://domains.google.com/registrar/{domain}/dns")
+    wait_for_tag(browser, "h3", "Synthetic records")
     return browser
 
 
-@print_timing
-def gdomain_list(browser: Browser) -> Dict[str, str]:
-    """ This xpath does NOT seem stable
-    """
-    divs = browser.find_by_xpath(" //div[contains(@class, 'H2OGROB-q-Mb')]")
-    ret = {}
-    for div in divs:
-        if f".{DOMAIN} " in div.html:
-            arr = div.html.split()
-            ret[arr[0]] = arr[-1]
-    return ret
-
-
-def gdomain_operation_ls(browser: Browser) -> None:
+def gdomain_api_ls(browser: Browser, domain: str) -> None:
     """ Prints the current list of redirects
     """
-    entries = gdomain_list(browser)
+    entries = gdomain_ls(browser, domain)
     print()
     for hostname, url in entries.items():
-        print(f"{hostname} : {url}")
+        print(f"{hostname} {url}")
     print()
 
 
-def gdomain_operation_add(browser: Browser, hostname: str, destination: str) -> None:
-    """ Adds the hostname -> destination redirect to Google Domains
+def gdomain_api_add(browser: Browser, domain: str, hostname: str, target: str) -> None:
+    """ Adds the hostname -> target redirect to Google Domains
     """
-    entries = gdomain_list(browser)
-    hostname = fqdn(hostname, relative=True)
+    hostname = fqdn(hostname, domain)
+    entries = gdomain_ls(browser, domain)
 
     # if its already here and pointed to the right place, do nothing
-    if hostname in entries and entries[hostname] == destination:
+    if hostname in entries and entries[hostname] == target:
         print(f"{hostname} already exists. Doing nothing.")
         return
 
-    # if its still here, its pointed to the wrong place. delete it
+    # if its already here, and pointed to the wrong place. delete it
     if hostname in entries:
-        gdomain_delete(browser, hostname)
+        gdomain_delete(browser, domain, hostname)
 
     # add it
-    gdomain_add(browser, hostname, destination)
-    gdomain_operation_ls(browser)
-
-    # Add to Google Cloud DNS
-    if not clouddns_contains(hostname):
-        clouddns_add(hostname)
+    gdomain_add(browser, domain, hostname, target)
+    gdomain_api_ls(browser, domain)
 
 
-def gdomain_operation_del(browser: Browser, hostname: str) -> None:
+def gdomain_api_del(browser: Browser, domain: str, hostname: str) -> None:
     """ Deletes the redirect
     """
-    entries = gdomain_list(browser)
-    hostname = fqdn(hostname, relative=True)
+    hostname = fqdn(hostname, domain)
+    entries = gdomain_ls(browser, domain)
+
     if hostname not in entries:
-        print(f"Not found: {hostname}")
+        print(f"Hostname not found: {hostname}. Doing nothing.")
         return
 
-    gdomain_delete(browser, hostname)
+    gdomain_delete(browser, domain, hostname)
 
 
 @print_timing
-def gdomain_add(browser: Browser, hostname: str, destination: str) -> None:
-    """ Adds a redirect from the hostname to the destination url
+def gdomain_ls(browser: Browser, domain: str) -> Dict[str, str]:
+    """ Returns a dict of hostnames to targets
     """
-    hostname = un_fqdn(fqdn(hostname, relative=True))  # make sure hostname is good
+    records = get_synthetic_records_div(browser)
+    divs = records.find_by_xpath(f"//div[contains(text(), '{domain}')]")
+    ret = {}
+    for div in divs:
+        arr = div.html.split()
+        hostname = arr[0]
+        target = arr[-1]
 
-    div = get_synthetic_records_div(browser)
-    get_element_by_placeholder(div, "Subdomain").fill(hostname)
-    get_element_by_placeholder(div, "Destination URL").fill(destination)
+        # skips skippable elements
+        if "→" in target:
+            continue
+        if domain not in hostname:
+            continue
 
-    div.find_by_text("Temporary redirect (302)").click()
-    div.find_by_text("Forward path").click()
-    div.find_by_text("Enable SSL").click()
+        ret[hostname] = target
 
-    button = div.find_by_text("Add")
+    return ret
+
+
+@print_timing
+def gdomain_add(browser: Browser, domain: str, hostname: str, target: str) -> None:
+    """ Adds a redirect from the hostname to the target url
+    """
+    hostname = un_fqdn(fqdn(hostname, domain), domain)  # make sure hostname is good
+
+    records = get_synthetic_records_div(browser)
+    get_element_by_placeholder(records, "Subdomain").fill(hostname)
+    get_element_by_placeholder(records, "Destination URL").fill(target)
+
+    records.find_by_text("Temporary redirect (302)").click()
+    records.find_by_text("Forward path").click()
+    records.find_by_text("Enable SSL").click()
+
+    button = records.find_by_text("Add")
     button.click()
 
-    # Wait until we get the success message. TODO: What if it fails?
-    wait_for(browser, f"Changes to {DOMAIN} saved")
+    wait_for_success_notification(browser, domain)
 
 
 @print_timing
-def gdomain_delete(browser: Browser, hostname: str) -> None:
+def gdomain_delete(browser: Browser, domain: str, hostname: str) -> None:
     """ Deletes the passed-in hostname from Google Domains
+        WARNING: THIS SEEMS BRITTLE
     """
-    hostname = fqdn(hostname, relative=True)
+    hostname = fqdn(hostname, domain)
 
     # find the right div for this hostname
-    div = get_element_by_substring(
-        hostname, browser.find_by_xpath("//div[contains(@class, 'H2OGROB-d-t')]")
-    )
+    records = get_synthetic_records_div(browser)
+    # xpath = "//div[contains(@class, 'H2OGROB-d-t')]"
+    xpath = f"//div[contains(text(), '{hostname}')]/../.."
+    divs = records.find_by_xpath(xpath)
+    div = divs.first
 
     # click the delete button
     delete_button = get_element_by_substring("Delete", div.find_by_tag("button"))
     delete_button.click()
 
     # wait for the modal dialog
-    wait_for(browser, "Delete synthetic record?")
+    wait_for_tag(browser, "h3", "Delete synthetic record?")
 
     # get the form element for the modal dialog
     modal_form = get_element_by_substring(
@@ -177,8 +213,14 @@ def gdomain_delete(browser: Browser, hostname: str) -> None:
     modal_button = get_element_by_substring("Delete", modal_form.find_by_tag("button"))
     modal_button.click()
 
-    # Wait until we get the success message. TODO: What if it fails?
-    wait_for(browser, f"Changes to {DOMAIN} saved")
+    wait_for_success_notification(browser, domain)
+
+
+def wait_for_success_notification(browser: Browser, domain: str) -> None:
+    """ Wait until we get the success message
+        TODO: What if it fails?
+    """
+    wait_for_tag(browser, "div", f"Changes to {domain} saved")
 
 
 def get_synthetic_records_div(browser: Browser) -> WebDriverElement:
@@ -196,7 +238,7 @@ def get_element_by_substring(substring: str, elements: ElementList) -> WebDriver
         if substring in element.html:
             return element
 
-    error(f"ELEMENT NOT FOUND: {substring}")
+    error(f"Element not found: {substring}")
     return None
 
 
@@ -215,6 +257,49 @@ def get_element_by_placeholder(
 
 
 @print_timing
+def wait_for_tag(browser: Browser, tag: str, substring: str) -> None:
+    """ Waits indefinitely for the string to appear in the
+        This is faster than the wait_for method, if we happen to know what tag we're looking for
+    """
+    debug(f"   wait: ({tag}) {substring}")
+
+    attempts = 0
+    while True:
+        try:
+            # try to find the element
+            while not does_element_exist(browser, tag, substring):
+
+                # if it doesnt exist, sleep and try again
+                debug(f"  sleep: ({tag}) {substring}")
+                time.sleep(0.5)
+                continue
+
+            # it does exist! return
+            debug(f"  found: ({tag}) {substring}")
+            return
+
+        except StaleElementReferenceException:
+            # NOTE: https://stackoverflow.com/questions/41539231/splinter-is-text-present-causes-intermittent-staleelementreferenceexception-wi  # pylint: disable=line-too-long  # noqa
+            attempts += 1
+            if attempts == DOM_MAX_ATTEMPTS:
+                raise
+            continue
+
+
+@print_timing
+def does_element_exist(browser: Browser, tag: str, substring: str) -> bool:
+    """ Returns True if an element with the substring exists in the DOM
+    """
+    xpath = f"//{tag}"
+    elements = browser.find_by_xpath(xpath)
+    for element in elements:
+        if substring in element.html:
+            return True
+
+    return False
+
+
+@print_timing
 def wait_for(browser: WebDriverElement, string: str) -> None:
     """ Waits indefinitely for the string to appear in the browser
     """
@@ -229,7 +314,6 @@ def wait_for(browser: WebDriverElement, string: str) -> None:
 def click_next(browser: Browser) -> None:
     """ Clicks Next in the browser
     """
-    max_attempts = 10  # arbitrary, somewhat large
     attempts = 0
 
     buttons = browser.find_by_tag("button")
@@ -237,101 +321,32 @@ def click_next(browser: Browser) -> None:
         try:
             if button.text == "Next":
                 button.click()
+
+        # NOTE: https://stackoverflow.com/questions/41539231/splinter-is-text-present-causes-intermittent-staleelementreferenceexception-wi  # pylint: disable=line-too-long  # noqa
         except StaleElementReferenceException:
-            # NOTE: https://stackoverflow.com/questions/41539231/splinter-is-text-present-causes-intermittent-staleelementreferenceexception-wi  # pylint: disable=line-too-long  # noqa
             attempts += 1
-            if attempts == max_attempts:
+            if attempts == DOM_MAX_ATTEMPTS:
                 raise
             continue
 
 
-def clouddns_contains(hostname: str) -> bool:
-    """ Returns True if it already exists in cloud dns
+def fqdn(hostname: str, domain: str, relative: bool = True) -> str:
+    """ Returns the FQDN of the passed-in hostname
     """
-    hostname = fqdn(hostname)
-    if hostname in clouddns_list():
-        return True
-    return False
+    if domain not in hostname:
+        hostname = f"{hostname}.{domain}."
 
-
-def clouddns_list() -> List[str]:
-    """ Returns a sorted list of Cloud DNS entries that point to Google Domains
-    """
-    zone = f"--zone={GCLOUD_ZONE}"
-    cmd = f"gcloud dns record-sets list {zone}"
-    output = run_command(cmd)
-    ret = []
-
-    # parse and check the output
-    entries = output.split("\n")
-    for entry in entries:
-        if not entry:
-            continue
-
-        items = entry.split()
-        dns_name = items[0]
-        dns_type = items[1]
-        # dns_ttl = items[2]
-        dns_target = items[3]
-        if dns_type == "CNAME" and dns_target == GCLOUD_TARGET:
-            ret.append(dns_name)
-
-    return sorted(ret)
-
-
-def clouddns_add(hostname: str) -> bool:
-    """ Sets Cloud DNS to use Google Domains for the redirect
-        Returns True if all went well. False otherwise
-    """
-    hostname = fqdn(hostname)
-
-    tx = f"gcloud dns record-sets transaction --project={GCLOUD_PROJECT}"
-    zone = f"--zone={GCLOUD_ZONE}"
-    commands = [
-        f"{tx} start {zone}",
-        f"{tx} add {GCLOUD_TARGET} --name={hostname} --ttl=5 --type=CNAME {zone}",
-        f"{tx} execute {zone}",
-    ]
-
-    try:
-        for command in commands:
-            run_command(command)
-    except:  # pylint: disable=bare-except  # noqa
-        delegator.run(f"{tx} abort")
-        return False
-
-    return True
-
-
-def run_command(command: str) -> str:
-    """ Returns the output of the command
-        Raises a RuntimeError if something went sideways
-    """
-    response = delegator.run(command)
-    if not response.ok:
-        error(f"running: {command}: {response.err}")
-        raise RuntimeError
-
-    return response.out
-
-
-def fqdn(hostname: str, relative: bool = False) -> str:
-    """ Returns the absolute FQDN of the passed-in hostname
-    """
-    if DOMAIN not in hostname:
-        hostname = f"{hostname}.{DOMAIN}."
-
-    the_fqdn = FQDN(hostname)
+    this_fqdn = FQDN(hostname)
 
     if relative:
-        return the_fqdn.relative
-    return the_fqdn.absolute
+        return this_fqdn.relative
+    return this_fqdn.absolute
 
 
-def un_fqdn(hostname: str) -> str:
+def un_fqdn(hostname: str, domain: str) -> str:
     """ Returns the relative hostname, sans domain
     """
-    ret = hostname.replace(DOMAIN, "")
+    ret = hostname.replace(domain, "")
     ret = ret.strip(".")
     return ret
 
@@ -343,9 +358,9 @@ def error(message: str) -> None:
 
 
 def debug(message: str) -> None:
-    """ Prints an message if DEBUG is set
+    """ Prints an message if VERBOSE is set
     """
-    if DEBUG:
+    if VERBOSE:
         print(message)
 
 
@@ -355,123 +370,146 @@ def click() -> int:
     return int(round(time.time() * 1000))
 
 
-# pylint: disable=global-statement
-def initialize_args(the_args: List[str]) -> Tuple[str, str, str]:
-    """ parses command-line args
+def initialize() -> SimpleNamespace:
+    """ Initializes config info, from three sources:
+        1. Config file
+        2. Command line
+        3. Environment variables
+
+        Sets the VERBOSE global variable
+        Returns all the config args in a Namespace
     """
+    config = initialize_from_files()
+    config.update(initialize_from_env())
+    config.update(initialize_from_cmdline(sys.argv[1:]))
+
+    ret = SimpleNamespace(**config)
+    if ret.verbose:
+        print(f"   config verbose: {ret.verbose}")
+        print(f"   config username: {ret.username}")
+        print(f"   config password: {ret.password}")
+        print(f"   config domain: {ret.domain}")
+        print(f"   config operation: {ret.operation}")
+        print(f"   config hostname: {ret.hostname}")
+        print(f"   config target: {ret.target}")
+        print()
+
+    global VERBOSE  # pylint: disable=global-statement
+    VERBOSE = ret.verbose
+
+    try:
+        validate_args(ret)
+    except RuntimeError as e:
+        print(f"\n  {e}\n")
+
+    return ret
+
+
+def initialize_from_files() -> ConfigDict:
+    """ Returns a ConfigDict from the config files
+    """
+    ret = {}
+    for location in get_configfile_locations():
+        expanded = os.path.expanduser(location)
+        if os.path.isfile(expanded):
+            with open(expanded) as file:
+                ret.update(yaml.load(file, Loader=yaml.FullLoader))
+
+    return ret
+
+
+def get_configfile_locations() -> List[str]:
+    """ Returns a list of possible file locations
+    """
+    return ["/etc/google-domains.yaml", "~/.google_domains.yaml"]
+
+
+def initialize_from_env() -> ConfigDict:
+    """ Returns a ConfigDict from the environment
+    """
+    ret: ConfigDict = {}
+
+    keys = ["debug", "username", "password", "domain"]
+    for key in keys:
+        set_if_present(ret, key)
+
+    return ret
+
+
+def set_if_present(config: ConfigDict, key: str) -> None:
+    """ Sets the key/val in the passed-in config, IF the env var is present
+    """
+    env_name = f"GOOGLE_DOMAINS_{key.upper()}"
+    env_val = os.environ.get(env_name)
+    if env_val:
+        config[key] = env_val
+
+
+def initialize_from_cmdline(the_args: List[str]) -> ConfigDict:
+    """ Returns a ConfigDict from the command-line
+    """
+    ret = {}
     parser = argparse.ArgumentParser()
 
+    # Optional args
     parser.add_argument(
-        "-d",
-        "--debug",
-        dest="debug",
-        help="Print debug info",
-        required=False,
+        "-v",
+        "--verbose",
+        dest="verbose",
+        help="Increase verbosity",
         action="store_true",
     )
     parser.add_argument(
-        "-u",
-        "--username",
-        dest="username",
-        help="Google Domains username",
-        required=True,
+        "-u", "--username", dest="username", help="Google Domains username"
     )
     parser.add_argument(
-        "-p",
-        "--password",
-        dest="password",
-        help="Google Domains password",
-        required=True,
+        "-p", "--password", dest="password", help="Google Domains password"
     )
+    parser.add_argument("-d", "--domain", dest="domain", help="The domain suffix")
 
+    # Positional args
     parser.add_argument(
-        "--gcloud-project",
-        dest="gcloud_project",
-        help="The gcloud project name",
-        required=False,
+        dest="operation",
+        type=str,
+        help="The CRUD operation",
+        choices=["ls", "add", "del"],
     )
     parser.add_argument(
-        "--gcloud-zone", dest="gcloud_zone", help="The gcloud zone", required=False
+        dest="hostname", type=str, help="The hostname", default="", nargs="?",
     )
-
-    parser.add_argument("--domain", dest="domain", help="Domain suffix", required=True)
-    parser.add_argument(
-        "--hostname", dest="hostname", help="The hostname", required=False
-    )
-    parser.add_argument(
-        "--destination", dest="destination", help="The destination", required=False
-    )
-
-    parser.add_argument(dest="operation", choices=["add", "del", "ls"])
-
+    parser.add_argument(dest="target", help="The target URL", default="", nargs="?")
     args, _ = parser.parse_known_args(the_args)
-    hostname = args.hostname
-    destination = args.destination
-    operation = args.operation
 
-    global DEBUG
-    DEBUG = args.debug
+    # Conditionally set these
+    if args.verbose:
+        ret["verbose"] = args.verbose
+    if args.username:
+        ret["username"] = args.username
+    if args.password:
+        ret["password"] = args.password
+    if args.domain:
+        ret["domain"] = args.domain
 
-    global GOOGLE_DOMAINS_USERNAME
-    GOOGLE_DOMAINS_USERNAME = args.username
+    # Always set these
+    ret["hostname"] = args.hostname
+    ret["target"] = args.target
+    ret["operation"] = args.operation
 
-    global GOOGLE_DOMAINS_PASSWORD
-    GOOGLE_DOMAINS_PASSWORD = args.password
-
-    global DOMAIN
-    DOMAIN = args.domain
-
-    global GCLOUD_PROJECT
-    GCLOUD_PROJECT = args.gcloud_project
-
-    global GCLOUD_ZONE
-    GCLOUD_ZONE = args.gcloud_zone
-
-    if operation == "add":
-        if not hostname:
-            raise RuntimeError("The add operation needs a --hostname")
-        if not destination:
-            raise RuntimeError("The add operation needs a --destination")
-
-    if operation == "del":
-        if not hostname:
-            raise RuntimeError("The del operation needs a --hostname")
-
-    if DEBUG:
-        print(f"   param debug: {DEBUG}")
-        print(f"   param username: {GOOGLE_DOMAINS_USERNAME}")
-        print(f"   param password: {GOOGLE_DOMAINS_PASSWORD}")
-        print(f"   param gcloud project: {GCLOUD_PROJECT}")
-        print(f"   param gcloud zone: {GCLOUD_ZONE}")
-        print(f"   param domain: {DOMAIN}")
-        print(f"   param operation: {operation}")
-        print(f"   param hostname: {hostname}")
-        print()
-
-    return operation, hostname, destination
+    return ret
 
 
-def main():
-    """ well, this is main
+def validate_args(args: SimpleNamespace) -> None:
+    """ Raises an exception if the config is insufficient
     """
-    try:
-        operation, hostname, destination = initialize_args(sys.argv[1:])
-    except RuntimeError as e:
-        print()
-        print(f"  {e}")
-        print()
-        return
+    if args.operation == "add":
+        if not args.hostname:
+            raise RuntimeError("The add operation needs a --hostname")
+        if not args.target:
+            raise RuntimeError("The add operation needs a --target")
 
-    browser = gdomain_login()
-
-    if operation == "add":
-        gdomain_operation_add(browser, hostname, destination)
-    if operation == "del":
-        gdomain_operation_del(browser, hostname)
-    if operation == "ls":
-        gdomain_operation_ls(browser)
-
-    browser.quit()
+    if args.operation == "del":
+        if not args.hostname:
+            raise RuntimeError("The del operation needs a --hostname")
 
 
 if __name__ == "__main__":
