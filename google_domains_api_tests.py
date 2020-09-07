@@ -38,6 +38,4 @@ def test_fqdn():
 
     for hostname in hostnames:
         assert test.fqdn(hostname) == "foo.foobar.baz."
-
-    for hostname in hostnames:
         assert test.fqdn(hostname, relative=True) == "foo.foobar.baz"
