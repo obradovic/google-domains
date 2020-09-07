@@ -1,4 +1,4 @@
-name: arp-to-hosts
+name: google-domains-api
 
 on:
   pull_request:
