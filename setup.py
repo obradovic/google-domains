@@ -7,11 +7,11 @@ with open("README.md", "r") as readme:
 
 setuptools.setup(
     name="google-domains-api",
-    version="0.1.2",
-    scripts=["google-domains-api"],
+    version="0.1.0",
+    scripts=["google-domains"],
     author="Zo Obradovic",
     author_email="ping@obradovic.com",
-    description="arp-scan to /etc/hosts",
+    description="Command-line client for Google Domains",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/obradovic/google-domains-api",
