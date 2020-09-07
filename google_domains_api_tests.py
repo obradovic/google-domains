@@ -45,6 +45,9 @@ def test_fqdn():
 def test_initialize_from_cmdline():
     """ Tests initialize_from_cmdline
     """
+    response = test.initialize_from_cmdline([])
+    assert response.get("operation") == "ls"
+
     response = test.initialize_from_cmdline(["-v", "ls"])
     assert response.get("verbose") is True
     assert response.get("operation") == "ls"
