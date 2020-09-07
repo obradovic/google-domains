@@ -1,5 +1,22 @@
 """
     CRUD operations for Google Domains
+
+    Examples:
+        > google-domains ls                             # lists the current redirects
+        > google-domains add foo https://google.com     # adds a redirect from foo to google.com
+        > google-domains del foo                        # deletes the "foo" hostname redirect
+
+    YAML config file in ~/.google_domains.yaml can contain:
+        verbose: False
+        domain: "<your domain suffix>"
+        username: "<your Google Domains username>"
+        password: "<your Google Domains password>"
+
+    Alternatively, set environment variables:
+        GOOGLE_DOMAINS_DOMAIN
+        GOOGLE_DOMAINS_USERNAME
+        GOOGLE_DOMAINS_PASSWORD
+
 """
 import argparse
 from functools import wraps
@@ -9,22 +26,25 @@ import time
 from types import SimpleNamespace
 from typing import Dict, List
 from fqdn import FQDN
-import yaml
 from selenium.common.exceptions import StaleElementReferenceException
 from splinter import Browser
 from splinter.element_list import ElementList
 from splinter.driver.webdriver import WebDriverElement
+from tabulate import tabulate
+import yaml
 
 
 VERBOSE = False  # should we run headless and output lots of messages?
-DOM_MAX_ATTEMPTS = 10  # How many times to retry DOM errors - a reasonably large number, somewhat arbitrary
+DOM_MAX_ATTEMPTS = (
+    10  # How many times to retry DOM errors. Reasonably large, somewhat arbitrary
+)
 ConfigDict = Dict[str, str]  # type alias for mypy
 
 
 def main():
     """ Reads the args, and performs the CRUDs
     """
-    args = initialize()
+    args = initialize_args()
     browser = gdomain_api_login(args.domain, args.username, args.password)
 
     if args.operation == "add":
@@ -103,14 +123,20 @@ def gdomain_api_ls(browser: Browser, domain: str) -> None:
     """ Prints the current list of redirects
     """
     entries = gdomain_ls(browser, domain)
+
+    # Convert it to a list of lists, tabulate handles this natively
+    array = []
+    for key, val in entries.items():
+        array.append([key, val])
+    headers = ["Hostname", "Redirect URL"]
+
     print()
-    for hostname, url in entries.items():
-        print(f"{hostname} {url}")
+    print(tabulate(array, headers, tablefmt="simple"))
     print()
 
 
 def gdomain_api_add(browser: Browser, domain: str, hostname: str, target: str) -> None:
-    """ Adds the hostname -> target redirect to Google Domains
+    """ Adds the hostname-to-target redirect to Google Domains
     """
     hostname = fqdn(hostname, domain)
     entries = gdomain_ls(browser, domain)
@@ -122,9 +148,8 @@ def gdomain_api_add(browser: Browser, domain: str, hostname: str, target: str) -
 
     # if its already here, and pointed to the wrong place. delete it
     if hostname in entries:
-        gdomain_delete(browser, domain, hostname)
+        gdomain_del(browser, domain, hostname)
 
-    # add it
     gdomain_add(browser, domain, hostname, target)
     gdomain_api_ls(browser, domain)
 
@@ -139,7 +164,8 @@ def gdomain_api_del(browser: Browser, domain: str, hostname: str) -> None:
         print(f"Hostname not found: {hostname}. Doing nothing.")
         return
 
-    gdomain_delete(browser, domain, hostname)
+    gdomain_del(browser, domain, hostname)
+    gdomain_api_ls(browser, domain)
 
 
 @print_timing
@@ -182,11 +208,11 @@ def gdomain_add(browser: Browser, domain: str, hostname: str, target: str) -> No
     button = records.find_by_text("Add")
     button.click()
 
-    wait_for_success_notification(browser, domain)
+    wait_for_success_notification(browser)
 
 
 @print_timing
-def gdomain_delete(browser: Browser, domain: str, hostname: str) -> None:
+def gdomain_del(browser: Browser, domain: str, hostname: str) -> None:
     """ Deletes the passed-in hostname from Google Domains
         WARNING: THIS SEEMS BRITTLE
     """
@@ -213,14 +239,7 @@ def gdomain_delete(browser: Browser, domain: str, hostname: str) -> None:
     modal_button = get_element_by_substring("Delete", modal_form.find_by_tag("button"))
     modal_button.click()
 
-    wait_for_success_notification(browser, domain)
-
-
-def wait_for_success_notification(browser: Browser, domain: str) -> None:
-    """ Wait until we get the success message
-        TODO: What if it fails?
-    """
-    wait_for_tag(browser, "div", f"Changes to {domain} saved")
+    wait_for_success_notification(browser)
 
 
 def get_synthetic_records_div(browser: Browser) -> WebDriverElement:
@@ -256,6 +275,13 @@ def get_element_by_placeholder(
     raise RuntimeError(f"Placeholder element not found: {placeholder}")
 
 
+def wait_for_success_notification(browser: Browser) -> None:
+    """ Wait until we get the success message
+        TODO: What if it fails?
+    """
+    wait_for_tag(browser, "a", "Dismiss")
+
+
 @print_timing
 def wait_for_tag(browser: Browser, tag: str, substring: str) -> None:
     """ Waits indefinitely for the string to appear in the
@@ -288,13 +314,14 @@ def wait_for_tag(browser: Browser, tag: str, substring: str) -> None:
 
 @print_timing
 def does_element_exist(browser: Browser, tag: str, substring: str) -> bool:
-    """ Returns True if an element with the substring exists in the DOM
+    """ Returns True if an element with the substring exists in the DOM, and is visible
     """
     xpath = f"//{tag}"
     elements = browser.find_by_xpath(xpath)
     for element in elements:
         if substring in element.html:
-            return True
+            if element.visible:
+                return True
 
     return False
 
@@ -370,7 +397,7 @@ def click() -> int:
     return int(round(time.time() * 1000))
 
 
-def initialize() -> SimpleNamespace:
+def initialize_args() -> SimpleNamespace:
     """ Initializes config info, from three sources:
         1. Config file
         2. Command line
@@ -460,6 +487,9 @@ def initialize_from_cmdline(the_args: List[str]) -> ConfigDict:
         action="store_true",
     )
     parser.add_argument(
+        "-q", "--quiet", dest="quiet", help="Decrease verbosity", action="store_true"
+    )
+    parser.add_argument(
         "-u", "--username", dest="username", help="Google Domains username"
     )
     parser.add_argument(
@@ -472,6 +502,8 @@ def initialize_from_cmdline(the_args: List[str]) -> ConfigDict:
         dest="operation",
         type=str,
         help="The CRUD operation",
+        default="ls",
+        nargs="?",
         choices=["ls", "add", "del"],
     )
     parser.add_argument(
@@ -483,6 +515,8 @@ def initialize_from_cmdline(the_args: List[str]) -> ConfigDict:
     # Conditionally set these
     if args.verbose:
         ret["verbose"] = args.verbose
+    if args.quiet:
+        ret["verbose"] = not args.quiet
     if args.username:
         ret["username"] = args.username
     if args.password:
