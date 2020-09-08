@@ -1,2 +1,2 @@
 #!/bin/bash
-python3 google_domains_api.py $*
+python3 google_domains.command_line $*
