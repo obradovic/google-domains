@@ -44,7 +44,7 @@ run:
 	@$(TIMER) ./google-domains-api
 
 clean:
-	@rm -rf .coverage .mypy_cache .pytest_cache __pycache__ build dist *.egg-info
+	@rm -rf .coverage .mypy_cache .pytest_cache __pycache__ build dist *.egg-info geckodriver.log
 
 #
 # Below this, things are only useful for wheel management
