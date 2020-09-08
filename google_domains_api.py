@@ -506,9 +506,9 @@ def initialize_from_cmdline(the_args: List[str]) -> ConfigDict:
         choices=["ls", "add", "del"],
     )
     parser.add_argument(
-        dest="hostname", type=str, help="The hostname", default="", nargs="?",
+        dest="hostname", type=str, help="The hostname, if adding or deleting", default="", nargs="?",
     )
-    parser.add_argument(dest="target", help="The target URL", default="", nargs="?")
+    parser.add_argument(dest="target", help="The target URL, if adding", default="", nargs="?")
     args, _ = parser.parse_known_args(the_args)
 
     # Conditionally set these
