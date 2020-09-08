@@ -2,29 +2,30 @@
 
 SHELL := /bin/bash
 TIMER = TIMEFORMAT="This make target took %1R seconds" && time  # bash built-in, requires bash to be the SHELL above
-
+SRC := google_domains/*.py
+PYTHONPATH = export PYTHONPATH=.
 
 all: black ci
 	@echo ""
 	@echo "ALL GOOD!"
 	@echo ""
 
-ci: blackcheck typecheck pep lint coverage
+ci: blackcheck mypy pep lint coverage
 
 black:
-	@$(TIMER) black *.py
+	@$(TIMER) black $(SRC)
 
 blackcheck:
-	@$(TIMER) black --check *.py
+	@$(TIMER) black --check $(SRC)
 
 lint:
-	@$(TIMER) pylint_runner -v --rcfile .pylintrc .
+	@$(PYTHONPATH) $(TIMER) pylint_runner -v --rcfile .pylintrc .
 
 pep:
-	@$(TIMER) pycodestyle *.py
+	@$(TIMER) pycodestyle $(SRC)
 
-typecheck:
-	@$(TIMER) mypy *.py
+mypy:
+	@$(TIMER) mypy $(SRC)
 
 coverage: coverage-run coverage-report
 
@@ -41,7 +42,7 @@ test:
 	@$(TIMER) py.test .
 
 run:
-	@$(TIMER) ./google-domains-api
+	@$(TIMER) google-domains
 
 clean:
 	@rm -rf .coverage .mypy_cache .pytest_cache __pycache__ build dist *.egg-info geckodriver.log
