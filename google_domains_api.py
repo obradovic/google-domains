@@ -26,7 +26,10 @@ import time
 from types import SimpleNamespace
 from typing import Dict, List
 from fqdn import FQDN
-from selenium.common.exceptions import StaleElementReferenceException
+from selenium.common.exceptions import (
+    StaleElementReferenceException,
+    WebDriverException,
+)
 from splinter import Browser
 from splinter.element_list import ElementList
 from splinter.driver.webdriver import WebDriverElement
@@ -47,12 +50,16 @@ def main():
     args = initialize_args()
     browser = gdomain_api_login(args.domain, args.username, args.password)
 
-    if args.operation == "add":
-        gdomain_api_add(browser, args.domain, args.hostname, args.target)
-    elif args.operation == "del":
-        gdomain_api_del(browser, args.domain, args.hostname)
-    else:
-        gdomain_api_ls(browser, args.domain)
+    try:
+        if args.operation == "add":
+            gdomain_api_add(browser, args.domain, args.hostname, args.target)
+        elif args.operation == "del":
+            gdomain_api_del(browser, args.domain, args.hostname)
+        else:
+            gdomain_api_ls(browser, args.domain)
+
+    except WebDriverException as e:
+        print(e)
 
     browser.quit()
 
@@ -151,7 +158,9 @@ def gdomain_api_add(browser: Browser, domain: str, hostname: str, target: str) -
         gdomain_del(browser, domain, hostname)
 
     gdomain_add(browser, domain, hostname, target)
-    gdomain_api_ls(browser, domain)
+
+    if VERBOSE:
+        gdomain_api_ls(browser, domain)
 
 
 def gdomain_api_del(browser: Browser, domain: str, hostname: str) -> None:
@@ -165,7 +174,9 @@ def gdomain_api_del(browser: Browser, domain: str, hostname: str) -> None:
         return
 
     gdomain_del(browser, domain, hostname)
-    gdomain_api_ls(browser, domain)
+
+    if VERBOSE:
+        gdomain_api_ls(browser, domain)
 
 
 @print_timing
@@ -324,18 +335,6 @@ def does_element_exist(browser: Browser, tag: str, substring: str) -> bool:
                 return True
 
     return False
-
-
-@print_timing
-def wait_for(browser: WebDriverElement, string: str) -> None:
-    """ Waits indefinitely for the string to appear in the browser
-    """
-    debug(f'   wait: "{string}"')
-    while not browser.is_text_present(string):
-        debug(f'  sleep: "{string}"')
-        time.sleep(0.5)
-
-    debug(f'  found: "{string}"')
 
 
 def click_next(browser: Browser) -> None:
