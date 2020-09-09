@@ -1,7 +1,7 @@
 """
-    Tests for logging
+    Tests for log
 """
-from google_domains import logging as test
+from google_domains import log as test
 
 
 def test_print(capsys):

@@ -7,7 +7,7 @@ import sys
 from types import SimpleNamespace
 from typing import Dict, List
 import yaml
-import google_domains.logging as log
+import google_domains.log as log
 
 
 # Type alias

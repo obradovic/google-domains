@@ -25,7 +25,7 @@ from splinter import Browser
 from splinter.element_list import ElementList
 from splinter.driver.webdriver import WebDriverElement
 from tabulate import tabulate
-from google_domains.logging import VERBOSE, debug, error
+from google_domains.log import VERBOSE, debug, error
 from google_domains.utils import fqdn, un_fqdn, print_timing
 
 
@@ -38,7 +38,7 @@ def gdomain_api_construct(domain: str, username: str, password: str) -> Browser:
     """ Lifecycle creation
         Logs in, and returns a headless browser at the DNS page
     """
-    browser = Browser("firefox", headless=not VERBOSE)
+    browser = Browser("chrome", headless=not VERBOSE)
     browser.visit("https://domains.google.com/registrar/")
 
     link = browser.links.find_by_partial_text("Sign")

@@ -4,7 +4,7 @@
 from functools import wraps
 import time
 from fqdn import FQDN
-from google_domains.logging import debug
+from google_domains.log import debug
 
 
 class Timer:
