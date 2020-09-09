@@ -5,6 +5,13 @@ TIMER = TIMEFORMAT="This make target took %1R seconds" && time  # bash built-in,
 SRC := google_domains/*.py
 PYTHONPATH = export PYTHONPATH=.
 
+# https://stackoverflow.com/questions/2214575/passing-arguments-to-make-run
+ifeq (run,$(firstword $(MAKECMDGOALS)))
+  RUN_ARGS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
+  $(eval $(RUN_ARGS):;@:)
+endif
+
+
 all: black ci
 	@echo ""
 	@echo "ALL GOOD!"
@@ -41,8 +48,9 @@ coverage-report:
 test:
 	@$(TIMER) py.test .
 
+# ie. make run -- -v --browser firefox ls
 run:
-	@$(TIMER) google-domains
+	@$(PYTHONPATH) $(TIMER) python google_domains/command_line.py $(RUN_ARGS)
 
 clean:
 	@rm -rf .coverage .mypy_cache .pytest_cache __pycache__ build dist *.egg-info geckodriver.log
