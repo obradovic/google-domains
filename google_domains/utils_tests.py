@@ -2,11 +2,9 @@
     Tests for utils
 """
 import time
-
 from mock import patch  # create_autospec
 
 # import pytest
-# import .utils as test
 from google_domains import utils as test
 
 
