@@ -34,8 +34,9 @@ DOM_MAX_ATTEMPTS = 10
 
 
 @print_timing
-def gdomain_api_login(domain: str, username: str, password: str) -> Browser:
-    """ Logs in, and returns a headless browser at the DNS page
+def gdomain_api_construct(domain: str, username: str, password: str) -> Browser:
+    """ Lifecycle creation
+        Logs in, and returns a headless browser at the DNS page
     """
     browser = Browser("firefox", headless=not VERBOSE)
     browser.visit("https://domains.google.com/registrar/")
@@ -55,6 +56,12 @@ def gdomain_api_login(domain: str, username: str, password: str) -> Browser:
     browser.visit(f"https://domains.google.com/registrar/{domain}/dns")
     wait_for_tag(browser, "h3", "Synthetic records")
     return browser
+
+
+def gdomain_api_destruct(browser: Browser) -> None:
+    """ Lifecycle end
+    """
+    browser.quit()
 
 
 def gdomain_api_ls(browser: Browser, domain: str) -> None:

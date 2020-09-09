@@ -18,10 +18,10 @@
         GOOGLE_DOMAINS_PASSWORD
 
 """
-from selenium.common.exceptions import WebDriverException
 from google_domains.config import configure
 from google_domains.api import (
-    gdomain_api_login,
+    gdomain_api_construct,
+    gdomain_api_destruct,
     gdomain_api_add,
     gdomain_api_del,
     gdomain_api_ls,
@@ -32,7 +32,7 @@ def main():
     """ Reads the config, and performs the CRUDs
     """
     c = configure()
-    browser = gdomain_api_login(c.domain, c.username, c.password)
+    browser = gdomain_api_construct(c.domain, c.username, c.password)
 
     try:
         if c.operation == "add":
@@ -42,10 +42,10 @@ def main():
         else:
             gdomain_api_ls(browser, c.domain)
 
-    except WebDriverException as e:
+    except Exception as e:  # pylint: disable=broad-except
         print(e)
 
-    browser.quit()
+    gdomain_api_destruct(browser)
 
 
 if __name__ == "__main__":
