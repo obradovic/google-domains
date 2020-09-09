@@ -17,7 +17,6 @@ PACKAGE = "google_domains."
 def test_timer(debug, capsys):
     """ Tests Timer
     """
-    test.VERBOSE = True
     with test.Timer("foobar"):
         print("something")
 
