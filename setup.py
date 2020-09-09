@@ -10,7 +10,7 @@ def get_readme_md_contents():
         return long_description
 
 setup(
-    version="0.1.2",
+    version="0.1.3",
     name="google-domains",
     url="https://github.com/obradovic/google-domains",
     install_requires=[
