@@ -7,7 +7,7 @@ import sys
 from types import SimpleNamespace
 from typing import Dict, List
 import yaml
-import google_domains.log as log
+from google_domains.log import set_verbose
 
 
 # Type alias
@@ -20,7 +20,7 @@ def configure() -> SimpleNamespace:
         2. Command line
         3. Environment variables
 
-        Sets the VERBOSE global variable
+        Sets global verbosity
         Returns all the config args in a Namespace
     """
     config = initialize_from_files()
@@ -39,8 +39,7 @@ def configure() -> SimpleNamespace:
         print(f"   config target: {ret.target}")
         print()
 
-    # global log.VERBOSE  # pylint: disable=global-statement
-    log.VERBOSE = ret.verbose
+    set_verbose(ret.verbose)
 
     try:
         validate_args(ret)

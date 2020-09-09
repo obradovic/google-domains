@@ -25,7 +25,7 @@ from splinter import Browser
 from splinter.element_list import ElementList
 from splinter.driver.webdriver import WebDriverElement
 from tabulate import tabulate
-from google_domains.log import VERBOSE, debug, error
+from google_domains.log import debug, error, is_verbose
 from google_domains.utils import fqdn, un_fqdn, print_timing
 
 
@@ -40,7 +40,7 @@ def gdomain_api_construct(
     """ Lifecycle creation
         Logs in, and returns a headless browser at the DNS page
     """
-    browser = Browser(browser_name, headless=not VERBOSE)
+    browser = Browser(browser_name, headless=not is_verbose())
     browser.visit("https://domains.google.com/registrar/")
 
     link = browser.links.find_by_partial_text("Sign")
@@ -99,7 +99,7 @@ def gdomain_api_add(browser: Browser, domain: str, hostname: str, target: str) -
 
     gdomain_add(browser, domain, hostname, target)
 
-    if VERBOSE:
+    if is_verbose():
         gdomain_api_ls(browser, domain)
 
 
@@ -115,7 +115,7 @@ def gdomain_api_del(browser: Browser, domain: str, hostname: str) -> None:
 
     gdomain_del(browser, domain, hostname)
 
-    if VERBOSE:
+    if is_verbose():
         gdomain_api_ls(browser, domain)
 
 
