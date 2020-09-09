@@ -11,7 +11,7 @@ from google_domains import utils as test
 PACKAGE = "google_domains."
 
 
-@patch("google_domains.utils.debug")
+@patch(PACKAGE + "utils.debug")
 def test_timer(debug, capsys):
     """ Tests Timer
     """

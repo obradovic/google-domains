@@ -6,7 +6,10 @@ from mock import patch  # create_autospec
 import google_domains.config as test
 
 
-@patch("google_domains.config.read_configfile")
+PACKAGE = "google_domains."
+
+
+@patch(PACKAGE + "config.read_configfile")
 def test_initialize_from_files(read_configfile):
     """ Tests initialize_from_files
     """
