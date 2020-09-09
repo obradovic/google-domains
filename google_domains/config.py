@@ -54,11 +54,7 @@ def initialize_from_files() -> ConfigDict:
     """
     ret = {}
     for location in get_configfile_locations():
-        expanded = os.path.expanduser(location)
-        if os.path.isfile(expanded):
-            with open(expanded) as file:
-                ret.update(yaml.load(file, Loader=yaml.FullLoader))
-
+        ret.update(read_configfile(location))
     return ret
 
 
@@ -66,6 +62,16 @@ def get_configfile_locations() -> List[str]:
     """ Returns a list of possible file locations
     """
     return ["/etc/google-domains.yaml", "~/.google_domains.yaml"]
+
+
+def read_configfile(location: str) -> Dict[str, str]:
+    """ Reads a config file
+    """
+    expanded = os.path.expanduser(location)
+    if os.path.isfile(expanded):
+        with open(expanded) as file:
+            return yaml.load(file, Loader=yaml.FullLoader)
+    return {}
 
 
 def initialize_from_env() -> ConfigDict:
