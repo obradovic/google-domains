@@ -154,10 +154,11 @@ def initialize_from_cmdline(the_args: List[str]) -> ConfigDict:
     # Conditionally set these
     if args.verbose:
         ret["verbose"] = args.verbose
-    if args.browser:
-        ret["browser"] = args.browser
     if args.quiet:
         ret["verbose"] = not args.quiet
+
+    if args.browser:
+        ret["browser"] = args.browser
     if args.username:
         ret["username"] = args.username
     if args.password:
