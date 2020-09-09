@@ -38,7 +38,7 @@ def gdomain_api_construct(domain: str, username: str, password: str) -> Browser:
     """ Lifecycle creation
         Logs in, and returns a headless browser at the DNS page
     """
-    browser = Browser("chrome", headless=not VERBOSE)
+    browser = Browser("firefox", headless=not VERBOSE)
     browser.visit("https://domains.google.com/registrar/")
 
     link = browser.links.find_by_partial_text("Sign")
