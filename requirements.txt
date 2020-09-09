@@ -4,7 +4,7 @@
 black==19.10b0
 coverage==5.2.1
 coveralls==2.1.2
-ipython==7.17.0
+ipython==7.18.1
 mock==4.0.2
 mypy==0.782
 pycodestyle==2.6.0
