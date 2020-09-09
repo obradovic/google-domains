@@ -3,10 +3,29 @@
 """
 import time
 
-# from mock import MagicMock, patch  # create_autospec
+from mock import patch  # create_autospec
+
 # import pytest
 # import .utils as test
 from google_domains import utils as test
+
+
+PACKAGE = "google_domains."
+
+
+@patch("google_domains.utils.debug")
+def test_timer(debug, capsys):
+    """ Tests Timer
+    """
+    test.VERBOSE = True
+    with test.Timer("foobar"):
+        print("something")
+
+    out, __ = capsys.readouterr()
+    assert "something" in out
+    assert debug.call_count == 1
+    assert "time: foobar" in debug.call_args[0][0]
+    assert " took " in debug.call_args[0][0]
 
 
 def test_click():
@@ -34,3 +53,13 @@ def test_fqdn():
         assert test.fqdn(hostname, domain, relative=False) == "foo.foobar.baz."
         assert test.fqdn(hostname, domain, relative=True) == "foo.foobar.baz"
         assert test.fqdn(hostname, domain) == "foo.foobar.baz"
+
+
+def test_un_fqdn():
+    """ Tests un_fqdn
+    """
+    domain = "bar.com"
+    assert test.un_fqdn("foo.bar.com", domain) == "foo"
+    assert test.un_fqdn("foo.bar.com.", domain) == "foo"
+    assert test.un_fqdn("foo", domain) == "foo"
+    assert test.un_fqdn("foo.", domain) == "foo"
