@@ -32,7 +32,7 @@ def main():
     """ Reads the config, and performs the CRUDs
     """
     c = configure()
-    browser = gdomain_api_construct(c.domain, c.username, c.password)
+    browser = gdomain_api_construct(c.domain, c.username, c.password, c.browser)
 
     try:
         if c.operation == "add":

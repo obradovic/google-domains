@@ -30,6 +30,7 @@ def configure() -> SimpleNamespace:
     ret = SimpleNamespace(**config)
     if ret.verbose:
         print(f"   config verbose: {ret.verbose}")
+        print(f"   config target: {ret.browser}")
         print(f"   config username: {ret.username}")
         print(f"   config password: {ret.password}")
         print(f"   config domain: {ret.domain}")
@@ -79,7 +80,7 @@ def initialize_from_env() -> ConfigDict:
     """
     ret: ConfigDict = {}
 
-    keys = ["debug", "username", "password", "domain"]
+    keys = ["verbose", "browser", "username", "password", "domain"]
     for key in keys:
         set_if_present(ret, key)
 
@@ -108,6 +109,16 @@ def initialize_from_cmdline(the_args: List[str]) -> ConfigDict:
         dest="verbose",
         help="Increase verbosity",
         action="store_true",
+    )
+    parser.add_argument(
+        "-b",
+        "--browser",
+        dest="browser",
+        type=str,
+        help="The browser to use",
+        default="firefox",
+        # https://splinter.readthedocs.io/en/latest/browser.html
+        choices=["chrome", "firefox", "zope.testbrowser"],
     )
     parser.add_argument(
         "-q", "--quiet", dest="quiet", help="Decrease verbosity", action="store_true"
@@ -144,6 +155,8 @@ def initialize_from_cmdline(the_args: List[str]) -> ConfigDict:
     # Conditionally set these
     if args.verbose:
         ret["verbose"] = args.verbose
+    if args.browser:
+        ret["browser"] = args.browser
     if args.quiet:
         ret["verbose"] = not args.quiet
     if args.username:

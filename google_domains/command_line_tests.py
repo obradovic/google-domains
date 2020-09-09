@@ -33,6 +33,7 @@ def test_main(
     #
     config = {
         "verbose": True,
+        "browser": "foo_firefox",
         "domain": "foobar.com",
         "username": "foo_username",
         "password": "foo_password",
@@ -53,6 +54,7 @@ def test_main(
     assert api_construct.call_args[0][0] == "foobar.com"
     assert api_construct.call_args[0][1] == "foo_username"
     assert api_construct.call_args[0][2] == "foo_password"
+    assert api_construct.call_args[0][3] == "foo_firefox"
     out, err = capsys.readouterr()
     assert not out
     assert not err

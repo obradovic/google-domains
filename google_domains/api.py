@@ -34,11 +34,13 @@ DOM_MAX_ATTEMPTS = 10
 
 
 @print_timing
-def gdomain_api_construct(domain: str, username: str, password: str) -> Browser:
+def gdomain_api_construct(
+    domain: str, username: str, password: str, browser_name: str = "firefox"
+) -> Browser:
     """ Lifecycle creation
         Logs in, and returns a headless browser at the DNS page
     """
-    browser = Browser("firefox", headless=not VERBOSE)
+    browser = Browser(browser_name, headless=not VERBOSE)
     browser.visit("https://domains.google.com/registrar/")
 
     link = browser.links.find_by_partial_text("Sign")

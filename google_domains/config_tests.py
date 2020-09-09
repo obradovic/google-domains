@@ -3,6 +3,7 @@
 """
 import os
 from mock import patch  # create_autospec
+import pytest
 import google_domains.config as test
 
 
@@ -47,18 +48,49 @@ def test_initialize_from_env():
 def test_initialize_from_cmdline():
     """ Tests initialize_from_cmdline
     """
-    response = test.initialize_from_cmdline([])
-    assert response.get("operation") == "ls"
 
+    # DEFAULT ARGS
+    response = test.initialize_from_cmdline([])
+    assert response.get("verbose") is None
+    assert response.get("browser") == "firefox"
+    assert response.get("operation") == "ls"
+    assert response.get("hostname") == ""
+    assert response.get("target") == ""
+
+    # VERBOSE LS
     response = test.initialize_from_cmdline("-v ls".split())
     assert response.get("verbose") is True
     assert response.get("operation") == "ls"
 
+    # QUIET ADD
     response = test.initialize_from_cmdline("-q add".split())
     assert response.get("verbose") is False
     assert response.get("operation") == "add"
 
+    # SET DOMAIN
     response = test.initialize_from_cmdline("--domain foo.bar del".split())
     assert response.get("verbose") is None
     assert response.get("domain") == "foo.bar"
     assert response.get("operation") == "del"
+
+    # CHROME
+    response = test.initialize_from_cmdline("--browser chrome".split())
+    assert response.get("verbose") is None
+    assert response.get("browser") == "chrome"
+    assert response.get("operation") == "ls"
+
+    # FIREFOX
+    response = test.initialize_from_cmdline("--browser firefox".split())
+    assert response.get("verbose") is None
+    assert response.get("browser") == "firefox"
+    assert response.get("operation") == "ls"
+
+    # INVALID BROWSER
+    with pytest.raises(SystemExit) as e:
+        response = test.initialize_from_cmdline("--browser foobar".split())
+        assert e.type == SystemExit
+
+    # INVALID OPERATION
+    with pytest.raises(SystemExit) as e:
+        response = test.initialize_from_cmdline("foobar".split())
+        assert e.type == SystemExit
