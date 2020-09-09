@@ -18,7 +18,7 @@ def test_initialize_from_files(read_configfile):
     # File has nothing
     read_configfile.return_value = {}
     response = test.initialize_from_files()
-    assert not len(response)
+    assert not response
 
 
 def test_initialize_from_env():
