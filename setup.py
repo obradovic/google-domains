@@ -10,10 +10,15 @@ def get_readme_md_contents():
         return long_description
 
 setup(
-    version="0.1.1",
-    name="google-domains-api",
-    url="https://github.com/obradovic/google-domains-api",
-    install_requires=["fqdn==1.4.0", "PyYAML==5.3.1", "splinter==0.14.0", "tabulate==0.8.7"],
+    version="0.1.2",
+    name="google-domains",
+    url="https://github.com/obradovic/google-domains",
+    install_requires=[
+        "PyYAML",
+        "fqdn>=1.2.0",
+        "splinter>=0.14.0",
+        "tabulate>=0.4.2",
+    ],
     entry_points={
         "console_scripts": [
             "google-domains = google_domains.command_line:main",
