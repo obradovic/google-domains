@@ -8,11 +8,13 @@
 
     YAML config file in ~/.google_domains.yaml can contain:
         verbose: False
+        browser: "firefox"
         domain: "<your domain suffix>"
         username: "<your Google Domains username>"
         password: "<your Google Domains password>"
 
     Alternatively, set environment variables:
+        GOOGLE_DOMAINS_BROWSER
         GOOGLE_DOMAINS_DOMAIN
         GOOGLE_DOMAINS_USERNAME
         GOOGLE_DOMAINS_PASSWORD
