@@ -1,22 +1,5 @@
 """
     CRUD operations for Google Domains
-
-    Examples:
-        > google-domains ls                             # lists the current redirects
-        > google-domains add foo https://google.com     # adds a redirect from foo to google.com
-        > google-domains del foo                        # deletes the "foo" hostname redirect
-
-    YAML config file in ~/.google_domains.yaml can contain:
-        verbose: False
-        domain: "<your domain suffix>"
-        username: "<your Google Domains username>"
-        password: "<your Google Domains password>"
-
-    Alternatively, set environment variables:
-        GOOGLE_DOMAINS_DOMAIN
-        GOOGLE_DOMAINS_USERNAME
-        GOOGLE_DOMAINS_PASSWORD
-
 """
 import time
 from typing import Dict
@@ -34,7 +17,7 @@ DOM_MAX_ATTEMPTS = 10
 
 
 @print_timing
-def gdomain_api_construct(
+def api_construct(
     domain: str, username: str, password: str, browser_name: str = "firefox"
 ) -> Browser:
     """ Lifecycle creation
@@ -60,13 +43,13 @@ def gdomain_api_construct(
     return browser
 
 
-def gdomain_api_destruct(browser: Browser) -> None:
+def api_destruct(browser: Browser) -> None:
     """ Lifecycle end
     """
     browser.quit()
 
 
-def gdomain_api_ls(browser: Browser, domain: str) -> None:
+def api_ls(browser: Browser, domain: str) -> None:
     """ Prints the current list of redirects
     """
     entries = gdomain_ls(browser, domain)
@@ -82,7 +65,7 @@ def gdomain_api_ls(browser: Browser, domain: str) -> None:
     print()
 
 
-def gdomain_api_add(browser: Browser, domain: str, hostname: str, target: str) -> None:
+def api_add(browser: Browser, domain: str, hostname: str, target: str) -> None:
     """ Adds the hostname-to-target redirect to Google Domains
     """
     hostname = fqdn(hostname, domain)
@@ -100,10 +83,10 @@ def gdomain_api_add(browser: Browser, domain: str, hostname: str, target: str) -
     gdomain_add(browser, domain, hostname, target)
 
     if is_verbose():
-        gdomain_api_ls(browser, domain)
+        api_ls(browser, domain)
 
 
-def gdomain_api_del(browser: Browser, domain: str, hostname: str) -> None:
+def api_del(browser: Browser, domain: str, hostname: str) -> None:
     """ Deletes the redirect
     """
     hostname = fqdn(hostname, domain)
@@ -116,7 +99,7 @@ def gdomain_api_del(browser: Browser, domain: str, hostname: str) -> None:
     gdomain_del(browser, domain, hostname)
 
     if is_verbose():
-        gdomain_api_ls(browser, domain)
+        api_ls(browser, domain)
 
 
 @print_timing

@@ -20,11 +20,11 @@
 """
 from google_domains.config import configure
 from google_domains.api import (
-    gdomain_api_construct,
-    gdomain_api_destruct,
-    gdomain_api_add,
-    gdomain_api_del,
-    gdomain_api_ls,
+    api_construct,
+    api_destruct,
+    api_add,
+    api_del,
+    api_ls,
 )
 
 
@@ -32,20 +32,20 @@ def main():
     """ Reads the config, and performs the CRUDs
     """
     c = configure()
-    browser = gdomain_api_construct(c.domain, c.username, c.password, c.browser)
+    browser = api_construct(c.domain, c.username, c.password, c.browser)
 
     try:
         if c.operation == "add":
-            gdomain_api_add(browser, c.domain, c.hostname, c.target)
+            api_add(browser, c.domain, c.hostname, c.target)
         elif c.operation == "del":
-            gdomain_api_del(browser, c.domain, c.hostname)
+            api_del(browser, c.domain, c.hostname)
         else:
-            gdomain_api_ls(browser, c.domain)
+            api_ls(browser, c.domain)
 
     except Exception as e:  # pylint: disable=broad-except
         print(e)
 
-    gdomain_api_destruct(browser)
+    api_destruct(browser)
 
 
 if __name__ == "__main__":

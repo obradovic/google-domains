@@ -17,11 +17,11 @@ def reset_mocks(*mocks):
 
 
 @patch(PACKAGE + "configure")
-@patch(PACKAGE + "gdomain_api_construct")
-@patch(PACKAGE + "gdomain_api_destruct")
-@patch(PACKAGE + "gdomain_api_ls")
-@patch(PACKAGE + "gdomain_api_add")
-@patch(PACKAGE + "gdomain_api_del")
+@patch(PACKAGE + "api_construct")
+@patch(PACKAGE + "api_destruct")
+@patch(PACKAGE + "api_ls")
+@patch(PACKAGE + "api_add")
+@patch(PACKAGE + "api_del")
 def test_main(
     api_del, api_add, api_ls, api_destruct, api_construct, configure, capsys
 ):  # pylint: disable=too-many-arguments
