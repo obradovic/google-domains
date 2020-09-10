@@ -10,7 +10,7 @@ def get_readme_md_contents():
         return long_description
 
 setup(
-    version="0.1.4",
+    version="0.1.5",
     name="google-domains",
     url="https://github.com/obradovic/google-domains",
     install_requires=[
@@ -24,6 +24,7 @@ setup(
             "google-domains = google_domains.command_line:main",
         ]
     },
+    python_requires='>3.6.0',  # for f-strings
     author="Zo Obradovic",
     author_email="ping@obradovic.com",
     description="Command-line client for Google Domains",
