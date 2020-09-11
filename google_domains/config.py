@@ -106,7 +106,7 @@ def initialize_from_cmdline(the_args: List[str]) -> ConfigDict:
         "-v",
         "--verbose",
         dest="verbose",
-        help="Increase verbosity",
+        help="Increase verbosity. Will display the browser",
         action="store_true",
     )
     parser.add_argument(
@@ -114,7 +114,7 @@ def initialize_from_cmdline(the_args: List[str]) -> ConfigDict:
         "--browser",
         dest="browser",
         type=str,
-        help="The browser to use",
+        help="The browser to use. Requires it to be installed",
         default="firefox",
         # https://splinter.readthedocs.io/en/latest/browser.html
         choices=["chrome", "firefox", "zope.testbrowser"],
@@ -123,10 +123,10 @@ def initialize_from_cmdline(the_args: List[str]) -> ConfigDict:
         "-q", "--quiet", dest="quiet", help="Decrease verbosity", action="store_true"
     )
     parser.add_argument(
-        "-u", "--username", dest="username", help="Google Domains username"
+        "-u", "--username", dest="username", help="Your Google Domains username"
     )
     parser.add_argument(
-        "-p", "--password", dest="password", help="Google Domains password"
+        "-p", "--password", dest="password", help="Your Google Domains password"
     )
     parser.add_argument("-d", "--domain", dest="domain", help="The domain suffix")
 
@@ -134,7 +134,7 @@ def initialize_from_cmdline(the_args: List[str]) -> ConfigDict:
     parser.add_argument(
         dest="operation",
         type=str,
-        help="The CRUD operation",
+        help="The CRUD operation. List redirects, add a redirect, or delete a redirect",
         default="ls",
         nargs="?",
         choices=["ls", "add", "del"],
@@ -142,12 +142,12 @@ def initialize_from_cmdline(the_args: List[str]) -> ConfigDict:
     parser.add_argument(
         dest="hostname",
         type=str,
-        help="The hostname, if adding or deleting",
+        help="The hostname to add or delete",
         default="",
         nargs="?",
     )
     parser.add_argument(
-        dest="target", help="The target URL, if adding", default="", nargs="?"
+        dest="target", help="The target URL to add", default="", nargs="?"
     )
     args, _ = parser.parse_known_args(the_args)
 
