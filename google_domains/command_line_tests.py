@@ -56,7 +56,7 @@ def test_main(
     assert api_construct.call_args[0][2] == "foo_password"
     assert api_construct.call_args[0][3] == "foo_firefox"
     out, err = capsys.readouterr()
-    assert not out
+    assert "Success" in out
     assert not err
     reset_mocks(api_del, api_add, api_ls, api_destruct, api_construct, configure)
 
