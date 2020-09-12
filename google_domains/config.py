@@ -4,8 +4,8 @@
 import argparse
 import os.path
 import sys
-from types import SimpleNamespace
 from typing import Dict, List
+from box import Box
 import yaml
 from google_domains.log import set_verbose
 
@@ -14,20 +14,20 @@ from google_domains.log import set_verbose
 ConfigDict = Dict[str, str]
 
 
-def configure() -> SimpleNamespace:
+def configure() -> Box:
     """ Initializes config info, from three sources:
         1. Config file
         2. Command line
         3. Environment variables
 
         Sets global verbosity
-        Returns all the config args in a Namespace
+        Returns all the config args
     """
     config = initialize_from_files()
     config.update(initialize_from_env())
     config.update(initialize_from_cmdline(sys.argv[1:]))
 
-    ret = SimpleNamespace(**config)
+    ret = Box(config)
     if ret.verbose:
         print(f"   config verbose: {ret.verbose}")
         print(f"   config target: {ret.browser}")
@@ -175,15 +175,22 @@ def initialize_from_cmdline(the_args: List[str]) -> ConfigDict:
     return ret
 
 
-def validate_args(args: SimpleNamespace) -> None:
-    """ Raises an exception if the config is insufficient
+def validate_args(args: Box) -> None:
+    """ Raises an exception if the args are insufficient
     """
     if args.operation == "add":
-        if not args.hostname:
-            raise RuntimeError("The add operation needs a --hostname")
-        if not args.target:
-            raise RuntimeError("The add operation needs a --target")
+        for key in ["hostname", "target"]:
+            if key not in args:
+                raise RuntimeError(f"The {args.operation} operation needs a --{key}")
 
     if args.operation == "del":
-        if not args.hostname:
-            raise RuntimeError("The del operation needs a --hostname")
+        for key in ["hostname"]:
+            if key not in args:
+                raise RuntimeError(f"The {args.operation} operation needs a --{key}")
+
+    # All of these are required
+    for key in ["username", "password", "domain"]:
+        if key not in args:
+            raise RuntimeError(
+                f"Need a {key}. Please use -{key[0]} option, set GOOGLE_DOMAINS_{key.upper()}, or use the config file(s)"  # noqa  # pylint: disable=line-too-long
+            )

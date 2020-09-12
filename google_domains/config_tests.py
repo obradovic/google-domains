@@ -3,6 +3,7 @@
 """
 import os
 from mock import patch  # create_autospec
+from box import Box
 import pytest
 import google_domains.config as test
 
@@ -94,3 +95,39 @@ def test_initialize_from_cmdline():
     with pytest.raises(SystemExit) as e:
         response = test.initialize_from_cmdline("foobar".split())
         assert e.type == SystemExit
+
+
+def test_validate_args():
+    """ Tests validate_args
+    """
+    # No hostname for add
+    with pytest.raises(RuntimeError) as e:
+        test.validate_args(Box({"operation": "add"}))
+    assert "hostname" in str(e)
+
+    # Has hostname, but no password for add
+    with pytest.raises(RuntimeError) as e:
+        test.validate_args(Box({"operation": "add", "hostname": "foobar"}))
+    assert "target" in str(e)
+
+    # No hostname for del
+    with pytest.raises(RuntimeError) as e:
+        test.validate_args(Box({"operation": "del"}))
+    assert "hostname" in str(e)
+
+    # No username
+    with pytest.raises(RuntimeError) as e:
+        test.validate_args(Box({"operation": "ls"}))
+    assert "username" in str(e)
+
+    # Has username, but no password
+    with pytest.raises(RuntimeError) as e:
+        test.validate_args(Box({"operation": "ls", "username": "foo"}))
+    assert "password" in str(e)
+
+    # Has username and password, but no domain
+    with pytest.raises(RuntimeError) as e:
+        test.validate_args(
+            Box({"operation": "ls", "username": "foo", "password": "bar"})
+        )
+    assert "domain" in str(e)
