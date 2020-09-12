@@ -61,7 +61,8 @@ def initialize_from_files() -> ConfigDict:
 def get_configfile_locations() -> List[str]:
     """ Returns a list of possible file locations
     """
-    return ["/etc/google-domains.yaml", "~/.google_domains.yaml"]
+    filename = "google-domains.yaml"
+    return [f"/etc/{filename}", f"~/.{filename}"]
 
 
 def read_configfile(location: str) -> Dict[str, str]:
