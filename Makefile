@@ -62,7 +62,7 @@ run:
 clean:
 	@rm -rf .coverage .mypy_cache .pytest_cache __pycache__ build dist *.egg-info geckodriver.log
 
-publish: wheel-build wheel-push docker-build docker-push
+publish: clean ci wheel-build wheel-push docker-build docker-push
 	@echo ""
 	@echo "PUBLISHED!"
 	@echo ""
@@ -97,7 +97,7 @@ wheel-install:
 	@$(PIP_INSTALL) --force $(WHEEL)
 
 # Uploads to pypi
-wheel-push: wheel-build
+wheel-push:
 	@$(PYTHON) -m twine upload $(WHEEL)
 
 # Initializes the environment - only need to run once
