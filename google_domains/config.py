@@ -4,7 +4,7 @@
 import argparse
 import os.path
 import sys
-from typing import Dict, List
+from typing import Dict, List, Optional
 from box import Box
 import yaml
 from google_domains.log import set_verbose
@@ -14,7 +14,7 @@ from google_domains.log import set_verbose
 ConfigDict = Dict[str, str]
 
 
-def configure() -> Box:
+def configure() -> Optional[Box]:
     """ Initializes config info, from three sources:
         1. Config file
         2. Command line
@@ -27,24 +27,28 @@ def configure() -> Box:
     config.update(initialize_from_env())
     config.update(initialize_from_cmdline(sys.argv[1:]))
 
-    ret = Box(config)
-    if ret.verbose:
-        print(f"   config verbose: {ret.verbose}")
-        print(f"   config target: {ret.browser}")
-        print(f"   config username: {ret.username}")
-        print(f"   config password: {ret.password}")
-        print(f"   config domain: {ret.domain}")
-        print(f"   config operation: {ret.operation}")
-        print(f"   config hostname: {ret.hostname}")
-        print(f"   config target: {ret.target}")
+    if config["verbose"]:
+        keys = [
+            "verbose",
+            "browser",
+            "username",
+            "password",
+            "domain",
+            "operation",
+            "hostname",
+            "target",
+        ]
+        for key in keys:
+            print(f"   config {key}: {config.get(key, '')}")
         print()
 
+    ret = Box(config)
     set_verbose(ret.verbose)
 
-    try:
-        validate_args(ret)
-    except RuntimeError as e:
-        print(f"\n  {e}\n")
+    error_message = validate_args(ret)
+    if error_message:
+        print(f"\n  {error_message}\n")
+        return None
 
     return ret
 
@@ -175,22 +179,26 @@ def initialize_from_cmdline(the_args: List[str]) -> ConfigDict:
     return ret
 
 
-def validate_args(args: Box) -> None:
-    """ Raises an exception if the args are insufficient
+def validate_args(args: Box) -> Optional[str]:
+    """ Returns an error string if the args werent validated
+        Returns None if everything's ok
     """
-    if args.operation == "add":
-        for key in ["hostname", "target"]:
-            if key not in args:
-                raise RuntimeError(f"The {args.operation} operation needs a --{key}")
 
-    if args.operation == "del":
-        for key in ["hostname"]:
-            if key not in args:
-                raise RuntimeError(f"The {args.operation} operation needs a --{key}")
+    # these operations require these arguments to be present
+    operation_dependencies = {
+        "add": ["hostname", "target"],
+        "del": ["hostname"],
+    }
 
-    # All of these are required
+    for operation, dependencies in operation_dependencies.items():
+        if args.operation == operation:
+            for key in dependencies:
+                if key not in args:
+                    return f"The {args.operation} operation needs a --{key}"
+
+    # All of these arguments are required for everything
     for key in ["username", "password", "domain"]:
         if key not in args:
-            raise RuntimeError(
-                f"Need a {key}. Please use -{key[0]} option, set GOOGLE_DOMAINS_{key.upper()}, or use the config file(s)"  # noqa  # pylint: disable=line-too-long
-            )
+            return f"Needs a {key}. Please either use the -{key[0]} option, set GOOGLE_DOMAINS_{key.upper()}, or set it in the config file(s)"  # noqa  # pylint: disable=line-too-long
+
+    return None

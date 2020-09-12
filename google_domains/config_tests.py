@@ -100,34 +100,25 @@ def test_initialize_from_cmdline():
 def test_validate_args():
     """ Tests validate_args
     """
-    # No hostname for add
-    with pytest.raises(RuntimeError) as e:
-        test.validate_args(Box({"operation": "add"}))
-    assert "hostname" in str(e)
 
-    # Has hostname, but no password for add
-    with pytest.raises(RuntimeError) as e:
-        test.validate_args(Box({"operation": "add", "hostname": "foobar"}))
-    assert "target" in str(e)
+    validation_tests = [
+        # No hostname for add
+        [{"operation": "add"}, ["hostname", "The add operation needs a"]],
+        # Has hostname, but no password for add
+        [{"operation": "add", "hostname": "foobar"}, ["target"]],
+        # No hostname for del
+        [{"operation": "del"}, ["hostname"]],
+        # No username
+        [{"operation": "ls"}, ["username", "Please"]],
+        # Has username, but no password
+        [{"operation": "ls", "username": "foo"}, ["password"]],
+        # Has username and password, but no domain
+        [{"operation": "ls", "username": "foo", "password": "bar"}, ["domain"]],
+    ]
 
-    # No hostname for del
-    with pytest.raises(RuntimeError) as e:
-        test.validate_args(Box({"operation": "del"}))
-    assert "hostname" in str(e)
+    for validation_test in validation_tests:
+        args = validation_test[0]
+        strings = validation_test[1]
 
-    # No username
-    with pytest.raises(RuntimeError) as e:
-        test.validate_args(Box({"operation": "ls"}))
-    assert "username" in str(e)
-
-    # Has username, but no password
-    with pytest.raises(RuntimeError) as e:
-        test.validate_args(Box({"operation": "ls", "username": "foo"}))
-    assert "password" in str(e)
-
-    # Has username and password, but no domain
-    with pytest.raises(RuntimeError) as e:
-        test.validate_args(
-            Box({"operation": "ls", "username": "foo", "password": "bar"})
-        )
-    assert "domain" in str(e)
+        for string in strings:
+            assert string in test.validate_args(Box(args))
