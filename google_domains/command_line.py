@@ -33,10 +33,10 @@ from google_domains.api import (
 def main():
     """ Reads the config, and performs the CRUDs
     """
-    c = configure()
-    browser = api_construct(c.domain, c.username, c.password, c.browser)
-
     try:
+        c = configure()
+        browser = api_construct(c.domain, c.username, c.password, c.browser)
+
         if c.operation == "add":
             api_add(browser, c.domain, c.hostname, c.target)
         elif c.operation == "del":
