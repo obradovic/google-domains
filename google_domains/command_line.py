@@ -35,12 +35,19 @@ def main():
     """
     try:
         c = configure()
+        if not c:
+            return
+
         browser = api_construct(c.domain, c.username, c.password, c.browser)
 
         if c.operation == "add":
             api_add(browser, c.domain, c.hostname, c.target)
+            print()
+            print(f"Success! Pointed {c.hostname} to {c.target}")
         elif c.operation == "del":
             api_del(browser, c.domain, c.hostname)
+            print()
+            print(f"Success! Deleted {c.hostname}")
         else:
             api_ls(browser, c.domain)
 
