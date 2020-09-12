@@ -4,6 +4,7 @@
 import time
 from typing import Dict
 from selenium.common.exceptions import StaleElementReferenceException
+from selenium.webdriver.chrome.options import Options as ChromeOptions
 from splinter import Browser
 from splinter.element_list import ElementList
 from splinter.driver.webdriver import WebDriverElement
@@ -23,7 +24,24 @@ def api_construct(
     """ Lifecycle creation
         Logs in, and returns a headless browser at the DNS page
     """
-    browser = Browser(browser_name, headless=not is_verbose())
+
+    headless = not is_verbose()
+    if browser_name == "chrome":
+
+        # need this to run as root in a container
+        options = ChromeOptions()
+        options.add_argument("--no-sandbox")
+
+        browser = Browser(browser_name, headless=headless, options=options)
+
+    # UGH Browser for FF cannot take an options arg!
+    # in the current splinter 1.14.0 at least
+    elif browser_name == "firefox":
+        browser = Browser(browser_name, headless=headless)
+
+    else:
+        raise RuntimeError(f"Unsupported browser: {browser}")
+
     browser.visit("https://domains.google.com/registrar/")
 
     link = browser.links.find_by_partial_text("Sign")
@@ -46,7 +64,8 @@ def api_construct(
 def api_destruct(browser: Browser) -> None:
     """ Lifecycle end
     """
-    browser.quit()
+    if browser:
+        browser.quit()
 
 
 def api_ls(browser: Browser, domain: str) -> None:
