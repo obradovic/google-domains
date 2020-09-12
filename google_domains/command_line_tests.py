@@ -1,7 +1,7 @@
 """
-    Tests for utils
+    Tests for command_line
 """
-from types import SimpleNamespace
+from box import Box
 from mock import patch  # create_autospec
 from google_domains import command_line as test
 
@@ -41,7 +41,7 @@ def test_main(
         "target": "foo_target",
         "operation": "add",
     }
-    configure.return_value = SimpleNamespace(**config)
+    configure.return_value = Box(**config)
 
     test.main()
     assert configure.call_count == 1
@@ -80,7 +80,7 @@ def test_main(
     # del gets called
     #
     config["operation"] = "del"
-    configure.return_value = SimpleNamespace(**config)
+    configure.return_value = Box(**config)
     test.main()
     assert configure.call_count == 1
     assert api_construct.call_count == 1
@@ -94,7 +94,7 @@ def test_main(
     # ls gets called
     #
     config["operation"] = "ls"
-    configure.return_value = SimpleNamespace(**config)
+    configure.return_value = Box(**config)
     test.main()
     assert configure.call_count == 1
     assert api_construct.call_count == 1
