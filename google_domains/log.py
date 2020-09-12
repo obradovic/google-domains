@@ -2,6 +2,7 @@
     Functions for logging
     TODO: Move to more pythonic logging
 """
+import sys
 
 VERBOSE = False
 
@@ -11,6 +12,9 @@ def debug(message: str) -> None:
     """
     if is_verbose():
         print(message)
+    else:
+        sys.stdout.write(".")
+        sys.stdout.flush()
 
 
 def error(message: str) -> None:
