@@ -55,7 +55,7 @@ coverage-report:
 test:
 	@$(TIMER) py.test .
 
-# ie. make run -- -v --browser firefox ls
+# FOR EXAMPLE: make run -- -v --browser firefox ls
 run:
 	@$(PYTHONPATH) $(TIMER) $(PYTHON) google_domains/command_line.py $(RUN_ARGS)
 
@@ -73,7 +73,7 @@ publish: wheel-build wheel-push docker-build docker-push
 # Docker
 #
 docker-bash:
-	@docker container run -it $(DOCKER_LATEST)
+	@docker container run -it $(DOCKER_LATEST) /bin/bash
 
 docker-build: # clean ci wheel-build
 	@DOCKER_BUILDKIT=1 docker image build -t $(DOCKER_IMAGE):$(VERSION) -t $(DOCKER_LATEST) .
