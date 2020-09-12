@@ -27,6 +27,7 @@ setup(
     name="google-domains",
     url="https://github.com/obradovic/google-domains",
     install_requires=[
+        "python-box>=5.0.0",
         "PyYAML",
         "fqdn>=1.2.0",
         "splinter>=0.14.0",
