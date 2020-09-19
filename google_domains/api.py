@@ -199,8 +199,7 @@ def get_synthetic_records_div(browser: Browser) -> WebDriverElement:
     """ Returns the parent div of the "Synthetic records" h3
     """
     xpath = '//h3[contains(text(), "Synthetic records")]/..'
-    ret = browser.find_by_xpath(xpath).first
-    return ret
+    return browser.find_by_xpath(xpath).first
 
 
 def get_element_by_substring(substring: str, elements: ElementList) -> WebDriverElement:
