@@ -2,11 +2,13 @@
     api tests
 """
 from mock import MagicMock, patch  # create_autospec
-from google_domains.log import set_verbose
 from google_domains import api as test
 
 
 PACKAGE = "google_domains.api."
+SAMPLE_TLD = "foobar.com"
+SAMPLE_HOSTNAME = f"baz.{SAMPLE_TLD}"
+SAMPLE_TARGET = "https://dweeb.com"
 
 
 def reset_mocks(*mocks) -> None:
@@ -32,38 +34,82 @@ def test_api_ls(gdomain_ls, capsys):
     """
 
     # HAPPY PATH
-    gdomain_ls.return_value = {"baz.foobar.com": "https://dweeb.com"}
-    test.api_ls(None, "foobar.com")
+    gdomain_ls.return_value = {SAMPLE_HOSTNAME: SAMPLE_TARGET}
+    test.api_ls(None, SAMPLE_TLD)
     assert gdomain_ls.call_count == 1
     out, __ = capsys.readouterr()
-    assert "baz.foobar.com" in out
+    assert SAMPLE_HOSTNAME in out
     assert "dweeb.com" in out
 
 
+@patch(PACKAGE + "is_verbose")
 @patch(PACKAGE + "gdomain_ls")
 @patch(PACKAGE + "gdomain_del")
-def test_api_del(gdomain_del, gdomain_ls, capsys):
+@patch(PACKAGE + "gdomain_add")
+def test_api_add(gdomain_add, gdomain_del, gdomain_ls, is_verbose, capsys):
+    """ Test api_add
+    """
+
+    # HAPPY PATH. Item does not currently exist
+    is_verbose.return_value = False
+    gdomain_ls.return_value = {}
+    test.api_add(None, SAMPLE_TLD, SAMPLE_HOSTNAME, SAMPLE_TARGET)
+    assert gdomain_ls.call_count == 1
+    assert gdomain_del.call_count == 0
+    assert gdomain_add.call_count == 1
+    out, __ = capsys.readouterr()
+    assert not out
+    reset_mocks(gdomain_add, gdomain_del, gdomain_ls, is_verbose)
+
+    # Item already exixts, and is pointed to THE SAME target
+    is_verbose.return_value = False
+    gdomain_ls.return_value = {SAMPLE_HOSTNAME: SAMPLE_TARGET}
+    test.api_add(None, SAMPLE_TLD, SAMPLE_HOSTNAME, SAMPLE_TARGET)
+    assert gdomain_ls.call_count == 1
+    assert gdomain_del.call_count == 0
+    assert gdomain_add.call_count == 0
+    out, __ = capsys.readouterr()
+    assert "already exists" in out
+    reset_mocks(gdomain_add, gdomain_del, gdomain_ls, is_verbose)
+
+    # Item already exixts, and is pointed to A DIFFERENT target
+    is_verbose.return_value = False
+    gdomain_ls.return_value = {SAMPLE_HOSTNAME: "https://totallytubular.com"}
+    test.api_add(None, SAMPLE_TLD, SAMPLE_HOSTNAME, SAMPLE_TARGET)
+    assert gdomain_ls.call_count == 1
+    assert gdomain_del.call_count == 1
+    assert gdomain_add.call_count == 1
+    out, __ = capsys.readouterr()
+    assert not out
+
+
+@patch(PACKAGE + "is_verbose")
+@patch(PACKAGE + "gdomain_ls")
+@patch(PACKAGE + "gdomain_del")
+def test_api_del(gdomain_del, gdomain_ls, is_verbose, capsys):
     """ Test api_del
     """
 
     # HAPPY PATH
-    gdomain_ls.return_value = {"baz.foobar.com": "https://dweeb.com"}
-    test.api_del(None, "foobar.com", "baz.foobar.com")
+    is_verbose.return_value = False
+    gdomain_ls.return_value = {SAMPLE_HOSTNAME: SAMPLE_TARGET}
+    test.api_del(None, SAMPLE_TLD, SAMPLE_HOSTNAME)
+    assert is_verbose.call_count == 1
     assert gdomain_ls.call_count == 1
     assert gdomain_del.call_count == 1
-    reset_mocks(gdomain_del, gdomain_ls)
+    reset_mocks(gdomain_del, gdomain_ls, is_verbose)
 
     # VERBOSE MODE
-    set_verbose(True)
-    gdomain_ls.return_value = {"baz.foobar.com": "https://dweeb.com"}
-    test.api_del(None, "foobar.com", "baz.foobar.com")
+    is_verbose.return_value = True
+    gdomain_ls.return_value = {SAMPLE_HOSTNAME: SAMPLE_TARGET}
+    test.api_del(None, SAMPLE_TLD, SAMPLE_HOSTNAME)
     assert gdomain_ls.call_count == 2
     assert gdomain_del.call_count == 1
-    reset_mocks(gdomain_del, gdomain_ls)
+    reset_mocks(gdomain_del, gdomain_ls, is_verbose)
 
     # ITEM NOT IN RESULTS
-    gdomain_ls.return_value = {"baz.foobar.com": "https://dweeb.com"}
-    test.api_del(None, "foobar.com", "NOTFOUND.foobar.com")
+    gdomain_ls.return_value = {SAMPLE_HOSTNAME: SAMPLE_TARGET}
+    test.api_del(None, SAMPLE_TLD, "NOTFOUND." + SAMPLE_TLD)
     assert gdomain_ls.call_count == 1
     assert gdomain_del.call_count == 0
     out, __ = capsys.readouterr()
